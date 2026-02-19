@@ -7,28 +7,31 @@ use crate::mct_bot::Bot;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut b = Board::new(3, 3);
-    let mut p = Player::X;
+    let mut b = Board::new(5, 4);
     let mut winner: Option<Player>;
 
     let mut bot_player = Bot::new();
 
     b.print();
 
-    for m in [0, 2, 3, 5, 6] {
-        let nm = bot_player.find_next_move(&b, Player::O);
-        winner = b.apply_move(m, p)?;
-        b.print();
-        p = p.next();
-        if winner.is_none() {
-            continue;
+    let mut p = Player::X;
+
+    loop {
+        if b.is_tie() {
+            println!("no dinner");
+            return Ok(());
         }
 
-        let winner = winner.unwrap();
-        println!("chicken dinner {winner}");
+        let nm = bot_player.find_next_move(&b, p)?;
+        print!("found move {nm}\n");
+        winner = b.apply_move(nm, p)?;
+        b.print();
+        p = p.next();
 
-        return Ok(());
+        if winner.is_some() {
+            let winner = winner.unwrap();
+            println!("chicken dinner {winner}");
+            return Ok(());
+        }
     }
-
-    Ok(())
 }

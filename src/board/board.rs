@@ -1,4 +1,4 @@
-use std::{error::Error, usize};
+use std::error::Error;
 
 use crate::board::Player;
 
@@ -38,6 +38,14 @@ impl Board {
             cells: vec![None; n * n],
             last_move: 0,
         }
+    }
+
+    pub fn cells(&self) -> &[Option<Player>] {
+        &self.cells
+    }
+
+    pub fn is_tie(&self) -> bool {
+        !self.cells.iter().any(|e| e.is_none())
     }
 
     pub fn print(&self) {

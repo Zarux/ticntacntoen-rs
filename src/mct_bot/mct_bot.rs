@@ -1,8 +1,22 @@
+use std::error::Error;
+
 use crate::board::{Board, Player};
-use crate::mct_bot::bot_board::BotBoard;
+use crate::mct_bot::bot_board::{BotBoard, legal_moves};
+
+use rand::random_range;
+use rand::seq::IndexedRandom;
+
+#[derive(strum_macros::Display, Debug)]
+pub enum BotError {
+    NoMoreMoves,
+}
+
+impl Error for BotError {}
 
 const EXPLORATION_PARAM: f64 = 1.414;
-const MAX_ITERATIONS: i32 = 10000;
+const MAX_ITERATIONS: i32 = 1000;
+const WIN_VALUE: f64 = 1.;
+const DRAW_VALUE: f64 = 0.6;
 
 #[derive(Clone)]
 pub struct Node {
@@ -13,19 +27,19 @@ pub struct Node {
     wins: f64,
     visits: i32,
     untried_moves: Vec<usize>,
-    last_move: Option<usize>,
+    player: Player,
 }
 
 impl Node {
-    pub fn new() -> Self {
+    pub fn new(p: Player) -> Self {
         Self {
             parent: None,
             children: vec![],
             wins: 0.0,
             visits: 0,
             untried_moves: vec![],
-            last_move: None,
             game_move: None,
+            player: p,
         }
     }
 
@@ -75,23 +89,96 @@ impl Bot {
             .expect("node without children")
     }
 
-    fn expand(&self, node_index: usize, board: &BotBoard, player: Player) -> usize {
-        1
+    fn expand(
+        &mut self,
+        node_index: usize,
+        board: &mut BotBoard,
+        player: Player,
+    ) -> (usize, Option<Player>) {
+        let idx = random_range(0..self.nodes[node_index].untried_moves.len());
+        let m = self.nodes[node_index].untried_moves.swap_remove(idx);
+
+        let winner = board
+            .board
+            .apply_move(m, player)
+            .expect("legal move during expansion");
+
+        let child_index = self.nodes.len();
+        let child = Node {
+            parent: Some(node_index),
+            game_move: Some(m),
+            children: vec![],
+            wins: 0.,
+            visits: 0,
+            untried_moves: legal_moves(&board.board),
+            player: player,
+        };
+
+        self.nodes.push(child);
+        self.nodes[node_index].children.push(child_index);
+
+        (child_index, winner)
     }
 
-    fn rollout(&self, board: &BotBoard, player: Player) -> Player {
-        player
+    fn rollout(&self, board: &mut BotBoard, mut player: Player) -> Option<Player> {
+        loop {
+            let moves = legal_moves(&board.board);
+            if moves.is_empty() {
+                return None;
+            }
+
+            let mut rng = rand::rng();
+            let &m = moves.choose(&mut rng).expect("moves not empty");
+            let winner = board.board.apply_move(m, player).expect("legal move");
+            if winner.is_some() {
+                return winner;
+            }
+
+            player = player.next();
+        }
     }
 
-    fn backpropogate(&self, node_index: usize, player: Player) {}
+    fn backpropagate(&mut self, mut node_index: usize, winner: Option<Player>) {
+        loop {
+            self.nodes[node_index].visits += 1;
+            let val = match winner {
+                Some(p) => {
+                    if p == self.nodes[node_index].player {
+                        WIN_VALUE
+                    } else {
+                        0.0
+                    }
+                }
+                None => DRAW_VALUE,
+            };
 
-    pub fn find_next_move(&mut self, board: &Board, player: Player) -> usize {
+            self.nodes[node_index].wins += val;
+
+            if self.nodes[node_index].parent.is_none() {
+                return;
+            }
+
+            node_index = self.nodes[node_index].parent.expect("node has parent");
+        }
+    }
+
+    pub fn find_next_move(
+        &mut self,
+        board: &Board,
+        player: Player,
+    ) -> Result<usize, Box<dyn Error>> {
         self.nodes.clear();
 
-        let root = Node::new();
+        let mut root = Node::new(player);
+        root.untried_moves = legal_moves(&board);
+        if root.untried_moves.is_empty() {
+            return Err(Box::from(BotError::NoMoreMoves));
+        }
+
+        root.game_move = Some(root.untried_moves[0]);
         self.nodes.push(root);
 
-        for _ in 0..MAX_ITERATIONS {
+        'iter_loop: for _ in 0..MAX_ITERATIONS {
             let mut board = BotBoard::new(board.clone());
 
             let mut current_player = player;
@@ -113,7 +200,8 @@ impl Bot {
                     .expect("valid move");
 
                 if winner.is_some() {
-                    break;
+                    self.backpropagate(current_node_index, winner);
+                    continue 'iter_loop;
                 }
 
                 current_player = current_player.next();
@@ -121,22 +209,33 @@ impl Bot {
 
             //EXPANSION
             if self.nodes[current_node_index].can_expand() {
-                current_node_index = self.expand(current_node_index, &board, current_player);
+                let (new_node_index, winner) =
+                    self.expand(current_node_index, &mut board, current_player);
+
+                if winner.is_some() {
+                    self.backpropagate(current_node_index, winner);
+                    continue 'iter_loop;
+                }
+
+                current_node_index = new_node_index;
                 current_player = current_player.next();
             }
 
             //SIMULATION
-            let winner = self.rollout(&board, current_player);
+            let winner = self.rollout(&mut board, current_player);
 
             //BACKPROPOGATION
-            self.backpropogate(current_node_index, winner);
+            self.backpropagate(current_node_index, winner);
         }
 
-        self.nodes
+        let &best_node = self.nodes[0]
+            .children
             .iter()
-            .max_by(|a, b| a.visits.cmp(&b.visits))
-            .expect("nodes should not be empty")
+            .max_by(|&&a, &&b| self.nodes[a].visits.cmp(&self.nodes[b].visits))
+            .expect("nodes should not be empty");
+
+        Ok(self.nodes[best_node]
             .game_move
-            .expect("node should have move")
+            .expect("node should have move"))
     }
 }
