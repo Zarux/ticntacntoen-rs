@@ -1,10 +1,11 @@
 use std::error::Error;
-
-use crate::board::{Board, Player};
-use crate::mct_bot::bot_board::{BotBoard, legal_moves};
+use std::time::{Duration, SystemTime};
 
 use rand::random_range;
 use rand::seq::IndexedRandom;
+
+use crate::board::{Board, Player};
+use crate::mct_bot::bot_board::{BotBoard, legal_moves};
 
 #[derive(strum_macros::Display, Debug)]
 pub enum BotError {
@@ -14,7 +15,7 @@ pub enum BotError {
 impl Error for BotError {}
 
 const EXPLORATION_PARAM: f64 = 1.414;
-const MAX_ITERATIONS: i32 = 1000;
+const MAX_THINKING_TIME: Duration = Duration::new(10, 0);
 const WIN_VALUE: f64 = 1.;
 const DRAW_VALUE: f64 = 0.6;
 
@@ -51,11 +52,15 @@ impl Node {
 
 pub struct Bot {
     nodes: Vec<Node>,
+    thinking_time: Duration,
 }
 
 impl Bot {
     pub fn new() -> Self {
-        Self { nodes: vec![] }
+        Self {
+            nodes: vec![],
+            thinking_time: MAX_THINKING_TIME,
+        }
     }
 
     fn uct_value(&self, node_index: usize) -> f64 {
@@ -178,7 +183,12 @@ impl Bot {
         root.game_move = Some(root.untried_moves[0]);
         self.nodes.push(root);
 
-        'iter_loop: for _ in 0..MAX_ITERATIONS {
+        let now = SystemTime::now();
+        'iter_loop: loop {
+            if now.elapsed().expect("time working") > self.thinking_time {
+                break 'iter_loop;
+            };
+
             let mut board = BotBoard::new(board.clone());
 
             let mut current_player = player;
