@@ -15,7 +15,7 @@ pub struct Board {
     n: usize,
     k: usize,
     cells: Vec<Option<Player>>,
-    last_move: usize,
+    last_move: Option<usize>,
 }
 
 struct Dir {
@@ -36,7 +36,7 @@ impl Board {
             n: n,
             k: k,
             cells: vec![None; n * n],
-            last_move: 0,
+            last_move: None,
         }
     }
 
@@ -77,19 +77,36 @@ impl Board {
         Ok(winner)
     }
 
+    pub fn undo_last_move(&mut self) -> Result<(), Box<dyn Error>> {
+        let last_move = match self.last_move {
+            Some(m) => m,
+            None => return Err(Box::from(GameError::InvalidMove)),
+        };
+
+        self.cells[last_move] = None;
+        self.last_move = None;
+
+        Ok(())
+    }
+
     fn make_move(&mut self, idx: usize, player: Player) -> Result<(), Box<dyn Error>> {
         if self.cells[idx].is_some() {
             return Err(Box::from(GameError::InvalidMove));
         }
 
         self.cells[idx] = Some(player);
-        self.last_move = idx;
+        self.last_move = Some(idx);
 
         Ok(())
     }
 
     pub fn check_winner(&self) -> Option<Player> {
-        self.check_winner_from(self.last_move)
+        let last_move = match self.last_move {
+            Some(m) => m,
+            None => return None,
+        };
+
+        self.check_winner_from(last_move)
     }
 
     pub fn check_winner_from(&self, idx: usize) -> Option<Player> {

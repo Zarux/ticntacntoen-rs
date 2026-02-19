@@ -1,11 +1,11 @@
 use std::error::Error;
 use std::time::{Duration, SystemTime};
 
-use rand::random_range;
 use rand::seq::IndexedRandom;
+use rand::{random_range, rng};
 
 use crate::board::{Board, Player};
-use crate::mct_bot::bot_board::{BotBoard, legal_moves};
+use crate::mct_bot::bot_board::BotBoard;
 
 #[derive(strum_macros::Display, Debug)]
 pub enum BotError {
@@ -115,7 +115,7 @@ impl Bot {
             children: vec![],
             wins: 0.,
             visits: 0,
-            untried_moves: legal_moves(&board.board),
+            untried_moves: board.legal_moves(),
             player: player,
         };
 
@@ -127,7 +127,7 @@ impl Bot {
 
     fn rollout(&self, board: &mut BotBoard, mut player: Player) -> Option<Player> {
         loop {
-            let moves = legal_moves(&board.board);
+            let moves = board.legal_moves();
             if moves.is_empty() {
                 return None;
             }
@@ -169,13 +169,24 @@ impl Bot {
 
     pub fn find_next_move(
         &mut self,
-        board: &Board,
+        original_board: &Board,
         player: Player,
     ) -> Result<usize, Box<dyn Error>> {
         self.nodes.clear();
 
+        let mut board = BotBoard::new(original_board.clone());
+        let (winning_moves, blocking_moves) = board.tactical_moves(player);
+
+        if !winning_moves.is_empty() {
+            return Ok(winning_moves[0]);
+        }
+
+        if blocking_moves.len() == 1 {
+            return Ok(blocking_moves[0]);
+        }
+
         let mut root = Node::new(player);
-        root.untried_moves = legal_moves(&board);
+        root.untried_moves = board.legal_moves();
         if root.untried_moves.is_empty() {
             return Err(Box::from(BotError::NoMoreMoves));
         }
@@ -183,13 +194,15 @@ impl Bot {
         root.game_move = Some(root.untried_moves[0]);
         self.nodes.push(root);
 
+        let mut iterations = 0;
         let now = SystemTime::now();
         'iter_loop: loop {
             if now.elapsed().expect("time working") > self.thinking_time {
                 break 'iter_loop;
             };
+            iterations += 1;
 
-            let mut board = BotBoard::new(board.clone());
+            board = BotBoard::new(original_board.clone());
 
             let mut current_player = player;
             let mut current_node_index = 0;
@@ -234,7 +247,7 @@ impl Bot {
             //SIMULATION
             let winner = self.rollout(&mut board, current_player);
 
-            //BACKPROPOGATION
+            //BACKPROPAGATION
             self.backpropagate(current_node_index, winner);
         }
 
@@ -244,8 +257,17 @@ impl Bot {
             .max_by(|&&a, &&b| self.nodes[a].visits.cmp(&self.nodes[b].visits))
             .expect("nodes should not be empty");
 
-        Ok(self.nodes[best_node]
+        let mut best_move = self.nodes[best_node]
             .game_move
-            .expect("node should have move"))
+            .expect("node should have move");
+
+        if !blocking_moves.is_empty() && !blocking_moves.contains(&best_move) {
+            best_move = *blocking_moves
+                .choose(&mut rng())
+                .expect("blocking moves should not be empty");
+        }
+
+        println!("iterations: {iterations}");
+        Ok(best_move)
     }
 }
