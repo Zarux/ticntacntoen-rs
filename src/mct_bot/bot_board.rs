@@ -9,11 +9,43 @@ impl BotBoard {
         Self { board: board }
     }
 
+    pub fn update_board(&mut self, board: Board) {
+        self.board = board;
+    }
+
     pub fn legal_moves(&self) -> Vec<usize> {
         legal_moves(&self.board)
     }
 
-    pub fn tactical_moves(&mut self, player: Player) -> (Vec<usize>, Vec<usize>) {
+    pub fn is_tactical_move(&mut self, m: usize) -> bool {
+        let x_winner = self
+            .board
+            .apply_move(m, Player::X)
+            .expect("move should be valid");
+        self.board
+            .undo_last_move()
+            .expect("undo move should be valid");
+
+        if x_winner.is_some() {
+            return true;
+        }
+
+        let o_winner = self
+            .board
+            .apply_move(m, Player::O)
+            .expect("move should be valid");
+        self.board
+            .undo_last_move()
+            .expect("undo move should be valid");
+
+        if o_winner.is_some() {
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn terminating_moves(&mut self, player: Player) -> (Option<usize>, Vec<usize>) {
         let mut blocking_moves: Vec<usize> = vec![];
 
         for (m, cell) in self.board.clone().cells().iter().enumerate() {
@@ -28,7 +60,7 @@ impl BotBoard {
             self.board.undo_last_move().expect("undo should be valid");
 
             if winner.is_some_and(|p| p == player) {
-                return (vec![m], vec![]);
+                return (Some(m), vec![]);
             }
 
             let next_player = player.next();
@@ -43,7 +75,7 @@ impl BotBoard {
             }
         }
 
-        (vec![], blocking_moves)
+        (None, blocking_moves)
     }
 }
 

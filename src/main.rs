@@ -7,7 +7,7 @@ use crate::mct_bot::Bot;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut b = Board::new(7, 4);
+    let mut b = Board::new(10, 5);
     let mut winner: Option<Player>;
 
     let mut bot_player = Bot::new();

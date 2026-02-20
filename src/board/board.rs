@@ -44,6 +44,10 @@ impl Board {
         &self.cells
     }
 
+    pub fn k(&self) -> usize {
+        self.k
+    }
+
     pub fn is_tie(&self) -> bool {
         !self.cells.iter().any(|e| e.is_none())
     }

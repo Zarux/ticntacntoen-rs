@@ -53,6 +53,7 @@ impl Node {
 pub struct Bot {
     nodes: Vec<Node>,
     thinking_time: Duration,
+    turn: usize,
 }
 
 impl Bot {
@@ -60,6 +61,7 @@ impl Bot {
         Self {
             nodes: vec![],
             thinking_time: MAX_THINKING_TIME,
+            turn: 0,
         }
     }
 
@@ -100,8 +102,33 @@ impl Bot {
         board: &mut BotBoard,
         player: Player,
     ) -> (usize, Option<Player>) {
-        let idx = random_range(0..self.nodes[node_index].untried_moves.len());
-        let m = self.nodes[node_index].untried_moves.swap_remove(idx);
+        let mut idx: Option<usize> = None;
+
+        let tactical_moves: Vec<usize> = self.nodes[node_index]
+            .untried_moves
+            .iter()
+            .filter(|&&m| board.is_tactical_move(m))
+            .copied()
+            .collect();
+
+        if !tactical_moves.is_empty() {
+            let m = tactical_moves[random_range(0..tactical_moves.len())];
+            idx = Some(
+                self.nodes[node_index]
+                    .untried_moves
+                    .iter()
+                    .position(|&um| um == m)
+                    .expect("untried moves should have the tactical move"),
+            );
+        }
+
+        if idx.is_none() {
+            idx = Some(random_range(0..self.nodes[node_index].untried_moves.len()));
+        }
+
+        let m = self.nodes[node_index]
+            .untried_moves
+            .swap_remove(idx.unwrap());
 
         let winner = board
             .board
@@ -175,10 +202,13 @@ impl Bot {
         self.nodes.clear();
 
         let mut board = BotBoard::new(original_board.clone());
-        let (winning_moves, blocking_moves) = board.tactical_moves(player);
+        let legal_moves = board.legal_moves();
+        self.turn = original_board.cells().len() - legal_moves.len();
 
-        if !winning_moves.is_empty() {
-            return Ok(winning_moves[0]);
+        let (winning_move, blocking_moves) = board.terminating_moves(player);
+
+        if winning_move.is_some() {
+            return Ok(winning_move.unwrap());
         }
 
         if blocking_moves.len() == 1 {
@@ -186,7 +216,7 @@ impl Bot {
         }
 
         let mut root = Node::new(player);
-        root.untried_moves = board.legal_moves();
+        root.untried_moves = legal_moves;
         if root.untried_moves.is_empty() {
             return Err(Box::from(BotError::NoMoreMoves));
         }
@@ -202,7 +232,7 @@ impl Bot {
             };
             iterations += 1;
 
-            board = BotBoard::new(original_board.clone());
+            board.update_board(original_board.clone());
 
             let mut current_player = player;
             let mut current_node_index = 0;
