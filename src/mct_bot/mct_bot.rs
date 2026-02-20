@@ -14,20 +14,19 @@ pub enum BotError {
 
 impl Error for BotError {}
 
-const EXPLORATION_PARAM: f64 = 1.414;
-const MAX_THINKING_TIME: Duration = Duration::new(10, 0);
-const WIN_VALUE: f64 = 1.;
-const DRAW_VALUE: f64 = 0.6;
+const EXPLORATION_PARAM: f32 = 1.414;
+const WIN_VALUE: f32 = 1.;
+const DRAW_VALUE: f32 = 0.6;
 
 #[derive(Clone)]
 pub struct Node {
     parent: Option<usize>,
     children: Vec<usize>,
 
-    game_move: Option<usize>,
-    wins: f64,
+    game_move: Option<i16>,
+    wins: f32,
     visits: i32,
-    untried_moves: Vec<usize>,
+    untried_moves: Vec<i16>,
     player: Player,
 }
 
@@ -45,8 +44,8 @@ impl Node {
     }
 
     pub fn can_expand(&self) -> bool {
-        let max_children = 2.0 * (self.visits as f64).sqrt();
-        self.untried_moves.len() > 0 && (self.children.len() as f64) < max_children
+        let max_children = 2.0 * (self.visits as f32).sqrt();
+        self.untried_moves.len() > 0 && (self.children.len() as f32) < max_children
     }
 }
 
@@ -57,43 +56,45 @@ pub struct Bot {
 }
 
 impl Bot {
-    pub fn new() -> Self {
+    pub fn new(thinking_time: Duration) -> Self {
         Self {
             nodes: vec![],
-            thinking_time: MAX_THINKING_TIME,
+            thinking_time: thinking_time,
             turn: 0,
         }
     }
 
-    fn uct_value(&self, node_index: usize) -> f64 {
-        let node = &self.nodes[node_index];
-        if node.visits == 0 {
-            return f64::INFINITY;
+    fn uct_value(&self, node_index: usize, p_v_ln: f32) -> f32 {
+        unsafe {
+            let current = self.nodes.get_unchecked(node_index);
+            if current.visits == 0 {
+                return f32::INFINITY;
+            }
+
+            let visits = current.visits as f32;
+            let wins = current.wins;
+
+            wins / visits + EXPLORATION_PARAM * (p_v_ln / visits).sqrt()
         }
-
-        let parent_visits = match node.parent {
-            Some(idx) => self.nodes[idx].visits as f64,
-            None => 0.0,
-        };
-
-        (node.wins / node.visits as f64)
-            + EXPLORATION_PARAM * (parent_visits.ln() / node.visits as f64).sqrt()
     }
 
     fn select_child(&self, node_index: usize) -> usize {
-        let current = &self.nodes[node_index];
+        unsafe {
+            let current = self.nodes.get_unchecked(node_index);
+            let current_visits_ln = (current.visits as f32).ln();
 
-        current
-            .children
-            .iter()
-            .max_by(|&&a, &&b| {
-                let u_a = self.uct_value(a);
-                let u_b = self.uct_value(b);
+            current
+                .children
+                .iter()
+                .max_by(|&&a, &&b| {
+                    let u_a = self.uct_value(a, current_visits_ln);
+                    let u_b = self.uct_value(b, current_visits_ln);
 
-                u_a.partial_cmp(&u_b).unwrap_or(std::cmp::Ordering::Equal)
-            })
-            .copied()
-            .expect("node without children")
+                    u_a.partial_cmp(&u_b).unwrap_or(std::cmp::Ordering::Equal)
+                })
+                .copied()
+                .expect("node without children")
+        }
     }
 
     fn expand(
@@ -102,12 +103,12 @@ impl Bot {
         board: &mut BotBoard,
         player: Player,
     ) -> (usize, Option<Player>) {
-        let mut idx: Option<usize> = None;
+        let mut idx = Some(random_range(0..self.nodes[node_index].untried_moves.len()));
 
-        let tactical_moves: Vec<usize> = self.nodes[node_index]
+        let tactical_moves: Vec<i16> = self.nodes[node_index]
             .untried_moves
             .iter()
-            .filter(|&&m| board.is_tactical_move(m))
+            .filter(|&&m| board.is_tactical_move(m, player))
             .copied()
             .collect();
 
@@ -122,10 +123,6 @@ impl Bot {
             );
         }
 
-        if idx.is_none() {
-            idx = Some(random_range(0..self.nodes[node_index].untried_moves.len()));
-        }
-
         let m = self.nodes[node_index]
             .untried_moves
             .swap_remove(idx.unwrap());
@@ -133,12 +130,12 @@ impl Bot {
         let winner = board
             .board
             .apply_move(m, player)
-            .expect("legal move during expansion");
+            .expect("legal move should be valid during expansion");
 
         let child_index = self.nodes.len();
         let child = Node {
             parent: Some(node_index),
-            game_move: Some(m),
+            game_move: Some(m.try_into().expect("game move should fit in i16")),
             children: vec![],
             wins: 0.,
             visits: 0,
@@ -153,18 +150,24 @@ impl Bot {
     }
 
     fn rollout(&self, board: &mut BotBoard, mut player: Player) -> Option<Player> {
+        let mut moves = board.legal_moves();
+
         loop {
-            let moves = board.legal_moves();
             if moves.is_empty() {
                 return None;
             }
 
-            let mut rng = rand::rng();
-            let &m = moves.choose(&mut rng).expect("moves not empty");
-            let winner = board.board.apply_move(m, player).expect("legal move");
+            let idx = random_range(0..moves.len());
+            let winner = board
+                .board
+                .apply_move(moves[idx], player)
+                .expect("legal move");
+
             if winner.is_some() {
                 return winner;
             }
+
+            moves.swap_remove(idx);
 
             player = player.next();
         }
@@ -198,7 +201,7 @@ impl Bot {
         &mut self,
         original_board: &Board,
         player: Player,
-    ) -> Result<usize, Box<dyn Error>> {
+    ) -> Result<i16, Box<dyn Error>> {
         self.nodes.clear();
 
         let mut board = BotBoard::new(original_board.clone());
@@ -221,7 +224,11 @@ impl Bot {
             return Err(Box::from(BotError::NoMoreMoves));
         }
 
-        root.game_move = Some(root.untried_moves[0]);
+        root.game_move = Some(
+            root.untried_moves[0]
+                .try_into()
+                .expect("game move should fit in i16"),
+        );
         self.nodes.push(root);
 
         let mut iterations = 0;
@@ -249,7 +256,10 @@ impl Bot {
 
                 let winner = board
                     .board
-                    .apply_move(game_move, current_player)
+                    .apply_move(
+                        game_move.try_into().expect("game move should fit in i16"),
+                        current_player,
+                    )
                     .expect("valid move");
 
                 if winner.is_some() {

@@ -12,15 +12,17 @@ impl Error for GameError {}
 #[derive(Clone)]
 
 pub struct Board {
-    n: usize,
-    k: usize,
+    n: i16,
+    k: i8,
     cells: Vec<Option<Player>>,
-    last_move: Option<usize>,
+    last_move: Option<i16>,
+    x_list: Vec<i16>,
+    y_list: Vec<i16>,
 }
 
 struct Dir {
-    dx: i8,
-    dy: i8,
+    dx: i16,
+    dy: i16,
 }
 
 const DIRECTIONS: [Dir; 4] = [
@@ -31,21 +33,21 @@ const DIRECTIONS: [Dir; 4] = [
 ];
 
 impl Board {
-    pub fn new(n: usize, k: usize) -> Self {
+    pub fn new(n: i16, k: i8) -> Self {
+        let x_list: Vec<i16> = (0..n * n).map(|i| i % n).collect();
+        let y_list: Vec<i16> = (0..n * n).map(|i| i / n).collect();
         Self {
             n: n,
             k: k,
-            cells: vec![None; n * n],
+            cells: vec![None; n as usize * n as usize],
             last_move: None,
+            x_list: x_list,
+            y_list: y_list,
         }
     }
 
     pub fn cells(&self) -> &[Option<Player>] {
         &self.cells
-    }
-
-    pub fn k(&self) -> usize {
-        self.k
     }
 
     pub fn is_tie(&self) -> bool {
@@ -62,7 +64,7 @@ impl Board {
                 }
             );
 
-            if (i + 1) % self.n == 0 {
+            if (i + 1) % (self.n as usize) == 0 {
                 print!("\n")
             }
         }
@@ -70,12 +72,8 @@ impl Board {
         print!("\n")
     }
 
-    pub fn apply_move(
-        &mut self,
-        idx: usize,
-        player: Player,
-    ) -> Result<Option<Player>, Box<dyn Error>> {
-        self.make_move(idx, player)?;
+    pub fn apply_move(&mut self, m: i16, player: Player) -> Result<Option<Player>, Box<dyn Error>> {
+        self.make_move(m, player)?;
 
         let winner = self.check_winner();
         Ok(winner)
@@ -87,19 +85,19 @@ impl Board {
             None => return Err(Box::from(GameError::InvalidMove)),
         };
 
-        self.cells[last_move] = None;
+        self.cells[last_move as usize] = None;
         self.last_move = None;
 
         Ok(())
     }
 
-    fn make_move(&mut self, idx: usize, player: Player) -> Result<(), Box<dyn Error>> {
-        if self.cells[idx].is_some() {
+    fn make_move(&mut self, m: i16, player: Player) -> Result<(), Box<dyn Error>> {
+        if self.cells[m as usize].is_some() {
             return Err(Box::from(GameError::InvalidMove));
         }
 
-        self.cells[idx] = Some(player);
-        self.last_move = Some(idx);
+        self.cells[m as usize] = Some(player);
+        self.last_move = Some(m);
 
         Ok(())
     }
@@ -113,26 +111,35 @@ impl Board {
         self.check_winner_from(last_move)
     }
 
-    pub fn check_winner_from(&self, idx: usize) -> Option<Player> {
-        let p = self.cells[idx];
+    pub fn check_winner_from(&self, m: i16) -> Option<Player> {
+        let p = self.cells[m as usize];
         if p.is_none() {
             return None;
         }
 
-        let x = idx % self.n;
-        let y = idx / self.n;
+        let x: i16;
+        let y: i16;
+        unsafe {
+            x = *self.x_list.get_unchecked(m as usize);
+            y = *self.y_list.get_unchecked(m as usize);
+        }
 
         for d in DIRECTIONS {
             let mut count = 1;
 
             for dir_mod in [-1, 1] {
-                let mut nx = (x as i8) + d.dx * dir_mod;
-                let mut ny = (y as i8) + d.dy * dir_mod;
+                let dx_dir_mod = d.dx * dir_mod;
+                let dy_dir_mod = d.dy * dir_mod;
 
-                while nx >= 0 && ny >= 0 && (nx as usize) < self.n && (ny as usize) < self.n {
-                    let n_idx = (ny as usize) * self.n + (nx as usize);
-                    if self.cells[n_idx] != p {
-                        break;
+                let mut nx = x + dx_dir_mod;
+                let mut ny = y + dy_dir_mod;
+
+                while nx >= 0 && ny >= 0 && nx < self.n && ny < self.n {
+                    let n_idx = ny * self.n + nx;
+                    unsafe {
+                        if *self.cells.get_unchecked(n_idx as usize) != p {
+                            break;
+                        }
                     }
 
                     count += 1;
@@ -140,8 +147,8 @@ impl Board {
                         return p;
                     }
 
-                    nx += d.dx * dir_mod;
-                    ny += d.dy * dir_mod;
+                    nx += dx_dir_mod;
+                    ny += dy_dir_mod;
                 }
             }
         }

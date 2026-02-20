@@ -5,12 +5,15 @@ use crate::board::{Board, Player};
 use crate::mct_bot::Bot;
 
 use std::error::Error;
+use std::time::Duration;
+
+const MAX_THINKING_TIME: Duration = Duration::new(5, 0);
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut b = Board::new(10, 5);
+    let mut b = Board::new(15, 5);
     let mut winner: Option<Player>;
 
-    let mut bot_player = Bot::new();
+    let mut bot_player = Bot::new(MAX_THINKING_TIME);
 
     b.print();
 
