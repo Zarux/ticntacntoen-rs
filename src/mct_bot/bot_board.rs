@@ -2,11 +2,19 @@ use crate::board::{Board, Player};
 
 pub struct BotBoard {
     pub board: Board,
+    x_list: Vec<i16>,
+    y_list: Vec<i16>,
 }
 
 impl BotBoard {
     pub fn new(board: Board) -> Self {
-        Self { board: board }
+        let x_list: Vec<i16> = (0..board.n() * board.n()).map(|i| i % board.n()).collect();
+        let y_list: Vec<i16> = (0..board.n() * board.n()).map(|i| i / board.n()).collect();
+        Self {
+            board: board,
+            x_list: x_list,
+            y_list: y_list,
+        }
     }
 
     pub fn update_board(&mut self, board: Board) {
@@ -52,6 +60,39 @@ impl BotBoard {
             .expect("undo move should be valid");
 
         self_winner.is_some()
+    }
+
+    pub fn has_neighbour(&mut self, m: i16) -> bool {
+        let cells = self.board.cells();
+        let n = self.board.n();
+        let x: i16;
+        let y: i16;
+        unsafe {
+            x = *self.x_list.get_unchecked(m as usize);
+            y = *self.y_list.get_unchecked(m as usize);
+        }
+
+        for dy in -2..=2 {
+            let ny = y + dy;
+            if ny < 0 || ny >= n {
+                continue;
+            }
+
+            for dx in -2..=2 {
+                let nx = x + dx;
+                if (nx < 0 || nx >= n) || dx == 0 && dy == 0 {
+                    continue;
+                }
+
+                unsafe {
+                    if cells.get_unchecked((ny * n + nx) as usize).is_some() {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
     }
 
     pub fn terminating_moves(&mut self, player: Player) -> (Option<i16>, Vec<i16>) {

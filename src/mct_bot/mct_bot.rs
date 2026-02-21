@@ -15,6 +15,7 @@ pub enum BotError {
 impl Error for BotError {}
 
 const EXPLORATION_PARAM: f32 = 1.414;
+const NEIGHBOUR_CHANCE: f32 = 0.6;
 const WIN_VALUE: f32 = 1.;
 const DRAW_VALUE: f32 = 0.6;
 
@@ -104,16 +105,36 @@ impl Bot {
         player: Player,
     ) -> (usize, Option<Player>) {
         let mut idx = Some(random_range(0..self.nodes[node_index].untried_moves.len()));
+        let mut tactical_moves: Vec<i16> = vec![];
+        let mut neighbour_moves: Vec<i16> = vec![];
 
-        let tactical_moves: Vec<i16> = self.nodes[node_index]
-            .untried_moves
-            .iter()
-            .filter(|&&m| board.is_tactical_move(m, player))
-            .copied()
-            .collect();
+        self.nodes[node_index].untried_moves.iter().for_each(|&m| {
+            if board.is_tactical_move(m, player) {
+                tactical_moves.push(m);
+                return;
+            }
+
+            if tactical_moves.is_empty() && board.has_neighbour(m) {
+                neighbour_moves.push(m);
+            }
+        });
 
         if !tactical_moves.is_empty() {
             let m = tactical_moves[random_range(0..tactical_moves.len())];
+            idx = Some(
+                self.nodes[node_index]
+                    .untried_moves
+                    .iter()
+                    .position(|&um| um == m)
+                    .expect("untried moves should have the tactical move"),
+            );
+        }
+
+        if idx.is_none()
+            && rand::random_bool(NEIGHBOUR_CHANCE as f64)
+            && !neighbour_moves.is_empty()
+        {
+            let m = neighbour_moves[random_range(0..neighbour_moves.len())];
             idx = Some(
                 self.nodes[node_index]
                     .untried_moves

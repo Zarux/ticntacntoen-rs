@@ -50,6 +50,10 @@ impl Board {
         &self.cells
     }
 
+    pub fn n(&self) -> i16 {
+        self.n
+    }
+
     pub fn is_tie(&self) -> bool {
         !self.cells.iter().any(|e| e.is_none())
     }

@@ -7,10 +7,10 @@ use crate::mct_bot::Bot;
 use std::error::Error;
 use std::time::Duration;
 
-const MAX_THINKING_TIME: Duration = Duration::new(5, 0);
+const MAX_THINKING_TIME: Duration = Duration::new(10, 0);
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut b = Board::new(15, 5);
+    let mut b = Board::new(7, 4);
     let mut winner: Option<Player>;
 
     let mut bot_player = Bot::new(MAX_THINKING_TIME);
