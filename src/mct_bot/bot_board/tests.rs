@@ -1,26 +1,6 @@
+use crate::board;
 use crate::board::{Board, Player};
 use crate::mct_bot::bot_board::BotBoard;
-
-#[cfg(test)]
-fn str_board_to_moves(board: &str) -> Vec<(i16, Player)> {
-    let mut moves = vec![];
-    let mut m = -1;
-    let mut prev_c = ' ';
-    for c in board.trim().chars() {
-        if c == ' ' && prev_c == '[' {
-            m += 1;
-        } else if c == 'X' {
-            m += 1;
-            moves.push((m, Player::X));
-        } else if c == 'O' {
-            m += 1;
-            moves.push((m, Player::O));
-        }
-        prev_c = c;
-    }
-
-    moves
-}
 
 mod tests {
     use super::*;
@@ -34,9 +14,13 @@ mod tests {
         ";
         let mut raw_test_board = Board::new(3, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in str_board_to_moves(board) {
+        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+            if p.is_none() {
+                continue;
+            }
+
             raw_test_board
-                .apply_move(m, p)
+                .apply_move(m as i16, p.expect("player should not be None"))
                 .expect("move should be valid");
         }
         test_board.update_board(raw_test_board);
@@ -55,9 +39,13 @@ mod tests {
         ";
         let mut raw_test_board = Board::new(3, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in str_board_to_moves(board) {
+        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+            if p.is_none() {
+                continue;
+            }
+
             raw_test_board
-                .apply_move(m, p)
+                .apply_move(m as i16, p.expect("player should not be None"))
                 .expect("move should be valid");
         }
         test_board.update_board(raw_test_board);
@@ -84,9 +72,13 @@ mod tests {
         ";
         let mut raw_test_board = Board::new(3, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in str_board_to_moves(board) {
+        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+            if p.is_none() {
+                continue;
+            }
+
             raw_test_board
-                .apply_move(m, p)
+                .apply_move(m as i16, p.expect("player should not be None"))
                 .expect("move should be valid");
         }
         test_board.update_board(raw_test_board);
@@ -111,9 +103,13 @@ mod tests {
         ";
         let mut raw_test_board = Board::new(4, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in str_board_to_moves(board) {
+        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+            if p.is_none() {
+                continue;
+            }
+
             raw_test_board
-                .apply_move(m, p)
+                .apply_move(m as i16, p.expect("player should not be None"))
                 .expect("move should be valid");
         }
         test_board.update_board(raw_test_board);
@@ -134,9 +130,13 @@ mod tests {
         ";
         let mut raw_test_board = Board::new(4, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in str_board_to_moves(board) {
+        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+            if p.is_none() {
+                continue;
+            }
+
             raw_test_board
-                .apply_move(m, p)
+                .apply_move(m as i16, p.expect("player should not be None"))
                 .expect("move should be valid");
         }
         test_board.update_board(raw_test_board);

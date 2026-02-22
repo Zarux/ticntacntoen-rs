@@ -1,4 +1,5 @@
 mod board;
+mod filestate;
 mod mct_bot;
 
 use crate::board::{Board, Player};
@@ -10,7 +11,10 @@ use std::time::Duration;
 const MAX_THINKING_TIME: Duration = Duration::new(10, 0);
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let mut b = Board::new(15, 5);
+    //let cells = filestate::get_cells("./board_cell_state.txt")?;
+    //let mut b = Board::new_from_state(5, 5, cells);
+
+    let mut b = Board::new(5, 5);
     let mut winner: Option<Player>;
 
     let mut bot_player = Bot::new(MAX_THINKING_TIME);

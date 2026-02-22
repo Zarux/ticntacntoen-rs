@@ -34,12 +34,20 @@ const DIRECTIONS: [Dir; 4] = [
 
 impl Board {
     pub fn new(n: i16, k: i8) -> Self {
+        Board::new_from_state(n, k, vec![None; (n * n) as usize])
+    }
+
+    pub fn new_from_state(n: i16, k: i8, cells: Vec<Option<Player>>) -> Self {
+        if cells.len() != (n * n) as usize {
+            panic!("invalid state loaded")
+        }
+
         let x_list: Vec<i16> = (0..n * n).map(|i| i % n).collect();
         let y_list: Vec<i16> = (0..n * n).map(|i| i / n).collect();
         Self {
             n: n,
             k: k,
-            cells: vec![None; n as usize * n as usize],
+            cells: cells,
             last_move: None,
             x_list: x_list,
             y_list: y_list,
@@ -159,4 +167,57 @@ impl Board {
 
         None
     }
+}
+
+#[allow(dead_code)]
+pub fn from_board_string_to_state(board: &str) -> Vec<Option<Player>> {
+    let mut cells = vec![];
+    let mut prev_c = ' ';
+    let mut board_size = 0;
+    for c in board.trim().chars() {
+        if board_size == 0 && !cells.is_empty() && c == '\n' {
+            board_size = cells.len();
+        }
+
+        if c == ' ' && prev_c == '[' {
+            cells.push(None);
+        } else if c == 'X' {
+            cells.push(Some(Player::X));
+        } else if c == 'O' {
+            cells.push(Some(Player::O));
+        } else if !['[', ']', ' ', '\n'].contains(&c) {
+            println!("character '{c}' invalid");
+            panic!("invalid character encountered")
+        }
+        prev_c = c;
+    }
+
+    if cells.len() != board_size * board_size {
+        panic!("boardsize inconsistent")
+    }
+
+    cells
+}
+
+#[allow(dead_code)]
+pub fn from_cell_string_to_state(cell_string: &str) -> Vec<Option<Player>> {
+    let cells: Vec<Option<Player>> = cell_string
+        .trim()
+        .chars()
+        .map(|c| match c {
+            'X' => Some(Player::X),
+            'O' => Some(Player::O),
+            '_' => None,
+            _ => {
+                println!("character '{c}' invalid");
+                panic!("invalid character encountered")
+            }
+        })
+        .collect();
+
+    if (cells.len() as f64).sqrt().fract() != 0.0 {
+        panic!("boardsize inconsistent")
+    }
+
+    cells
 }

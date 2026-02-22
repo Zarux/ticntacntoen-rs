@@ -18,7 +18,7 @@ pub enum BotError {
 impl Error for BotError {}
 
 const EXPLORATION_PARAM: f32 = 1.414;
-const NEIGHBOUR_CHANCE: f32 = 0.6;
+const NEIGHBOUR_CHANCE: f32 = 0.8;
 const WIN_VALUE: f32 = 1.;
 const DRAW_VALUE: f32 = 0.6;
 
