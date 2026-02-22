@@ -1,5 +1,8 @@
 use crate::board::{Board, Player};
 
+#[cfg(test)]
+mod tests;
+
 pub struct BotBoard {
     pub board: Board,
     x_list: Vec<i16>,
@@ -72,13 +75,13 @@ impl BotBoard {
             y = *self.y_list.get_unchecked(m as usize);
         }
 
-        for dy in -2..=2 {
+        for dy in -1..=1 {
             let ny = y + dy;
             if ny < 0 || ny >= n {
                 continue;
             }
 
-            for dx in -2..=2 {
+            for dx in -1..=1 {
                 let nx = x + dx;
                 if (nx < 0 || nx >= n) || dx == 0 && dy == 0 {
                     continue;

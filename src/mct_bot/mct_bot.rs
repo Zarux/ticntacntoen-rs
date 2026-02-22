@@ -7,6 +7,9 @@ use rand::{random_range, rng};
 use crate::board::{Board, Player};
 use crate::mct_bot::bot_board::BotBoard;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(strum_macros::Display, Debug)]
 pub enum BotError {
     NoMoreMoves,
