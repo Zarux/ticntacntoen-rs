@@ -71,7 +71,7 @@ impl Board {
             print!(
                 "[{}]",
                 match cell {
-                    Some(cell) => cell.to_string(),
+                    Some(cell) => cell.pretty(),
                     None => " ".to_string(),
                 }
             );
@@ -170,7 +170,7 @@ impl Board {
 }
 
 #[allow(dead_code)]
-pub fn from_board_string_to_state(board: &str) -> Vec<Option<Player>> {
+pub fn from_board_string_to_state(board: &str) -> (usize, Vec<Option<Player>>) {
     let mut cells = vec![];
     let mut prev_c = ' ';
     let mut board_size = 0;
@@ -196,11 +196,11 @@ pub fn from_board_string_to_state(board: &str) -> Vec<Option<Player>> {
         panic!("boardsize inconsistent")
     }
 
-    cells
+    (board_size, cells)
 }
 
 #[allow(dead_code)]
-pub fn from_cell_string_to_state(cell_string: &str) -> Vec<Option<Player>> {
+pub fn from_cell_string_to_state(cell_string: &str) -> (usize, Vec<Option<Player>>) {
     let cells: Vec<Option<Player>> = cell_string
         .trim()
         .chars()
@@ -215,9 +215,10 @@ pub fn from_cell_string_to_state(cell_string: &str) -> Vec<Option<Player>> {
         })
         .collect();
 
-    if (cells.len() as f64).sqrt().fract() != 0.0 {
+    let board_size = (cells.len() as f64).sqrt();
+    if board_size.fract() != 0.0 {
         panic!("boardsize inconsistent")
     }
 
-    cells
+    (board_size as usize, cells)
 }

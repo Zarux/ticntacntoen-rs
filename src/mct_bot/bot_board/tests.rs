@@ -12,9 +12,10 @@ mod tests {
         [ ][X][O]
         [ ][ ][X]
         ";
-        let mut raw_test_board = Board::new(3, 3);
+        let (n, cells) = board::from_board_string_to_state(board);
+        let mut raw_test_board = Board::new(n as i16, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+        for (m, p) in cells.iter().enumerate() {
             if p.is_none() {
                 continue;
             }
@@ -37,9 +38,10 @@ mod tests {
         [ ][X][O]
         [ ][ ][X]
         ";
-        let mut raw_test_board = Board::new(3, 3);
+        let (n, cells) = board::from_board_string_to_state(board);
+        let mut raw_test_board = Board::new(n as i16, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+        for (m, p) in cells.iter().enumerate() {
             if p.is_none() {
                 continue;
             }
@@ -70,9 +72,10 @@ mod tests {
         [ ][ ][ ]
         [O][ ][X]
         ";
-        let mut raw_test_board = Board::new(3, 3);
+        let (n, cells) = board::from_board_string_to_state(board);
+        let mut raw_test_board = Board::new(n as i16, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+        for (m, p) in cells.iter().enumerate() {
             if p.is_none() {
                 continue;
             }
@@ -101,9 +104,10 @@ mod tests {
         [ ][ ][ ][ ]
         [ ][ ][ ][ ]
         ";
-        let mut raw_test_board = Board::new(4, 3);
+        let (n, cells) = board::from_board_string_to_state(board);
+        let mut raw_test_board = Board::new(n as i16, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+        for (m, p) in cells.iter().enumerate() {
             if p.is_none() {
                 continue;
             }
@@ -128,9 +132,10 @@ mod tests {
         [ ][ ][X][ ]
         [ ][ ][ ][ ]
         ";
-        let mut raw_test_board = Board::new(4, 3);
+        let (n, cells) = board::from_board_string_to_state(board);
+        let mut raw_test_board = Board::new(n as i16, 3);
         let mut test_board = BotBoard::new(raw_test_board.clone());
-        for (m, p) in board::from_board_string_to_state(board).iter().enumerate() {
+        for (m, p) in cells.iter().enumerate() {
             if p.is_none() {
                 continue;
             }
