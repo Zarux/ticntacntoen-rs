@@ -234,8 +234,8 @@ impl Bot {
 
         let (winning_move, blocking_moves) = board.terminating_moves(player);
 
-        if winning_move.is_some() {
-            return Ok(winning_move.unwrap());
+        if let Some(m) = winning_move {
+            return Ok(m);
         }
 
         if blocking_moves.len() == 1 {

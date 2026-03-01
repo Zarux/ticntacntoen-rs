@@ -15,8 +15,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cli = cli::Args::parse();
 
     let mut b: Board;
-    if cli.state_file.is_some() {
-        let (n, cells) = filestate::get_cells(cli.state_file.unwrap().as_str())?;
+    if let Some(f) = cli.state_file {
+        let (n, cells) = filestate::get_cells(f.as_str())?;
         b = Board::new_from_state(n as i16, cli.k, cells);
     } else {
         b = Board::new(cli.n, cli.k);
@@ -74,8 +74,7 @@ fn play(
 
         player = player.next();
 
-        if winner.is_some() {
-            let winner = winner.unwrap();
+        if let Some(winner) = winner {
             println!("chicken dinner {winner}");
             return Ok(());
         }
